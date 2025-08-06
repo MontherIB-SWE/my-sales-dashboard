@@ -8,7 +8,6 @@ import ChartContainer from '@/components/molecules/ChartContainer';
 import ChartTypeSwitcher from '@/components/molecules/ChartTypeSwitcher';
 import ThresholdFilter from '@/components/molecules/ThresholdFilter';
 import { SalesDataItem, SalesDataYear } from '@/data/salesData';
-import Button from '@/components/atoms/Button';
 
 type ChartType = 'bar' | 'line' | 'pie';
 
@@ -37,8 +36,12 @@ const SalesChart: React.FC<SalesChartProps> = ({ availableYears }) => {
         }
         const data: SalesDataYear = await response.json();
         setSalesData(data.data);
-      } catch (err: any) {
-        setError(err.message || 'Failed to fetch sales data.');
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setError(err.message || 'Failed to fetch sales data.');
+        } else {
+          setError('An unknown error occurred.');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -47,7 +50,6 @@ const SalesChart: React.FC<SalesChartProps> = ({ availableYears }) => {
     fetchSalesData();
   }, [selectedYear]);
 
-  // Filter sales data based on threshold
   const filteredSalesData = useMemo(() => {
     if (salesThreshold === '' || salesThreshold === 0) {
       return salesData;
@@ -55,7 +57,6 @@ const SalesChart: React.FC<SalesChartProps> = ({ availableYears }) => {
     return salesData.filter(item => item.sales >= salesThreshold);
   }, [salesData, salesThreshold]);
 
-  // Prepare data for Pie Chart
   const pieChartData = useMemo(() => {
     return filteredSalesData.map(item => ({
       name: item.month,
@@ -107,7 +108,9 @@ const SalesChart: React.FC<SalesChartProps> = ({ availableYears }) => {
                 outerRadius={100}
                 fill="#8884d8"
                 dataKey="value"
-                label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                label={({ name, percent }) => (
+                  percent !== undefined ? `${name} ${(percent * 100).toFixed(0)}%` : name
+                )}
               >
                 {pieChartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -126,7 +129,6 @@ const SalesChart: React.FC<SalesChartProps> = ({ availableYears }) => {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end gap-4">
-        {/* Year Selector */}
         <div className="flex-grow min-w-[120px]">
           <label htmlFor="year-select" className="block text-sm font-medium text-gray-700 mb-1">
             Select Year
@@ -145,18 +147,15 @@ const SalesChart: React.FC<SalesChartProps> = ({ availableYears }) => {
           </select>
         </div>
 
-        {/* Threshold Filter */}
         <div className="flex-grow min-w-[180px]">
           <ThresholdFilter threshold={salesThreshold} onThresholdChange={setSalesThreshold} />
         </div>
 
-        {/* Chart Type Switcher */}
         <div className="flex-grow min-w-[300px]">
           <ChartTypeSwitcher currentType={chartType} onTypeChange={setChartType} />
         </div>
       </div>
 
-      {/* Chart Display */}
       <ChartContainer
         isLoading={isLoading}
         error={error}
